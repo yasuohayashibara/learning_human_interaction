@@ -10,6 +10,37 @@ from learning_human_interaction.msg import Interaction_robot_status
 from std_msgs.msg import Float32, Int8
 import numpy as np
 
+class Environment:
+    def __init__(self):
+        self.robot_x = 0
+        self.robot_xd = 0
+        self.robot_xdd = 0
+        self.human_x = 0.4
+        self.angle_errors = [0, 0, 0]
+        self.target_angles = [0, 0, 0]
+
+        self.WIDTH = 640
+        self.HEIGHT = 480
+        self.cv_image = np.zeros((self.HEIGHT, self.WIDTH, 3), np.uint8)
+
+    def calculate(self):
+        L1 = 0.5
+        L2 = 0.5
+
+
+    def draw(self):
+        CX = self.WIDTH / 2
+        CY = self.HEIGHT - 100
+        R = 300
+
+        self.cv_image.fill(255)
+        cv2.line(self.cv_image, (0, CY), (self.WIDTH, CY), (0, 0, 0), 3)
+        cv2.rectangle(self.cv_image, (self.robot_x * R + CX, CY), (self.robot_x + CX - 100, CY - 200), (255, 0, 0), 3)
+        cv2.line(self.cv_image, (int(self.human_x * R + CX), CY), (int(self.human_x * R + CX), CY - 200), (0, 0, 255), 3)
+        cv2.imshow("robot", self.cv_image)
+        cv2.waitKey(1)
+
+
 class dummy_robot:
     def __init__(self):
         rospy.init_node('dummy_robot', anonymous=True)
@@ -26,23 +57,15 @@ class dummy_robot:
         self.interaction_robot_status.angle_errors = [0, 0, 0]
         self.interaction_robot_status.target_angles = [0, 0, 0]
 
-        self.cv_image = np.zeros((480,640,3), np.uint8)
-        self.cv_image.fill(255)
+        self.env = Environment()
 
-#        self.image = self.bridge.cv2_to_imgmsg(self.cv_image, encoding="bgr8")
         self.publish_status_timer = rospy.Timer(rospy.Duration(0.033), self.callback_publish_status_timer)
         self.reward_timer = rospy.Timer(rospy.Duration(0.2), self.callback_reward_timer)
         self.count = 0
         self.prev_count = -1
 
     def callback_publish_status_timer(self, data):
-
-        self.cv_image.fill(255)
-        cv2.circle(self.cv_image, (640 / 2 + self.pan, 480 / 2), 300 - self.fb, (0, 255, 0), -1)
-#        self.image = self.bridge.cv2_to_imgmsg(self.cv_image, encoding="bgr8")
-        cv2.imshow("robot", self.cv_image)
-        cv2.waitKey(1)
-
+        self.env.draw()
         self.interaction_robot_status_pub.publish(self.interaction_robot_status)
 
     def callback_action(self, data):
