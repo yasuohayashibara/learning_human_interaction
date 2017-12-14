@@ -27,9 +27,11 @@ class Environment:
         self.WIDTH = 640
         self.HEIGHT = 480
         self.cv_image = np.zeros((self.HEIGHT, self.WIDTH, 3), np.uint8)
+        self.total_error = 0
 
-    def calculate(self, move_x):
-        self.human_x += move_x
+    def calculate(self, human_dx, robot_dx):
+        self.human_x += human_dx
+        self.robot_x += robot_dx
         distance = self.human_x - self.robot_x
         error = self.target_distance - distance
         error = min([max([error, -self.max_error_x]), self.max_error_x])
@@ -40,6 +42,14 @@ class Environment:
         current_angle = math.acos(distance / (2.0 * self.L))
         self.current_angles = np.array([-current_angle, 2.0 * current_angle, -current_angle])
         self.angle_errors = self.target_angles - self.current_angles
+        self.total_error = abs(self.angle_errors[0]) + abs(self.angle_errors[1]) + abs(self.angle_errors[2]);
+
+    def get_total_error(self):
+        return self.total_error
+
+    def set_interaction_robot_status(self, interaction_robot_status):
+        interaction_robot_status.angle_errors = self.angle_errors
+        interaction_robot_status.target_angles = self.target_angles
 
     def draw(self):
         CX = self.WIDTH / 2
@@ -73,8 +83,7 @@ class dummy_robot:
         self.reward_pub = rospy.Publisher("reward", Float32, queue_size=1)
         self.action_sub = rospy.Subscriber("action", Int8, self.callback_action)
         self.action = 0
-        self.pan = 0
-        self.fb = 100
+        self.robot_dx = 0
         self.reward = 0
 
         self.interaction_robot_status = Interaction_robot_status()
@@ -92,36 +101,30 @@ class dummy_robot:
         c = ''
         if read_key.key_pressed():
             c = read_key.read_key()
+        human_dx = 0
         if c == 'x':
-            move_x = 0.01
+            human_dx = 0.01
         elif c == 'z':
-            move_x = -0.01
-        else:
-            move_x = 0
-        self.env.calculate(move_x)
+            human_dx = -0.01
+        self.env.calculate(human_dx, self.robot_dx)
         self.env.draw()
+        self.env.set_interaction_robot_status(self.interaction_robot_status)
         self.interaction_robot_status_pub.publish(self.interaction_robot_status)
 
     def callback_action(self, data):
-        action_list = [[0, 0], [-10, -2], [10, -2], [0, -4]]
+        action_list = [-0.01, 0.0, 0.01]
         self.action = data.data
-        if (self.action < 0 or self.action >= 4):
+        if (self.action < 0 or self.action >= 3):
             return
-        self.pan += action_list[self.action][0]
-        self.fb += action_list[self.action][1]
+        self.robot_dx = action_list[self.action]
         self.count += 1
-        if ((self.count % 200) == 0):
-            self.pan = int(np.random.rand() * 400 - 200)
-            self.fb = int(np.random.rand() * 100) + 100
-            print("change pan angle")
 
     def callback_reward_timer(self, data):
         if (self.prev_count == self.count):
             print("reward timer is too first!")
         self.prev_count = self.count
-        reward_pan = min(1.0 - abs(self.pan) / 100.0, 1.0) ** 3
-        reward_fb = min(1.0 - abs(self.fb - 100.0) / 30.0, 1.0) ** 3
-        self.reward = reward_pan + reward_fb;
+        total_error = self.env.get_total_error()
+        self.reward = -total_error
 #        print("selected_action: " + str(self.action) + ", reward: " + str(self.reward))
         self.reward_pub.publish(self.reward)
 

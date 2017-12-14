@@ -2,4 +2,7 @@
     <node pkg="learning_human_interaction" type="learning_human_interaction_node.py" name="learning_human_interaction_node" output="screen">
         <param name ="action_num" value="4"></param>
     </node>
+
+    <node pkg="learning_human_interaction" type="dummy_robot.py" name="dummy_robot" output="screen">
+    </node>
 </launch>

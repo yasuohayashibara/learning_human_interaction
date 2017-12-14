@@ -4,7 +4,7 @@ import roslib
 roslib.load_manifest('learning_human_interaction')
 import rospy
 from learning_human_interaction.msg import Interaction_robot_status
-from cv_bridge import CvBridge, CvBridgeError
+from cv_bridge import CvBridge
 from reinforcement_learning import *
 from std_msgs.msg import Float32, Int8
 
@@ -25,11 +25,8 @@ class learning_human_interaction_node:
         self.learning = True
         self.interaction_robot_status = Interaction_robot_status()
 
-    def callback(self, data):
-        try:
-            self.interaction_robot_status = data.data
-        except CvBridgeError as e:
-            print(e)
+    def callback(self, status):
+        self.interaction_robot_status = status
 
     def callback_reward(self, reward):
         self.reward = reward.data
